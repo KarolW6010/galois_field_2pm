@@ -6,12 +6,6 @@ use std::ops::{Add, AddAssign,
                BitAnd};
 
 trait GFStorageType {}
-trait GFType {}
-trait GaloisField<T: GFType> {
-    type Elem;
-    fn zero() -> Self::Elem;
-    fn one() -> Self::Elem;
-}
 
 struct GF<T: GFStorageType, const POLY: u128> {
     value: T,
@@ -27,7 +21,15 @@ impl<T: GFStorageType + BitXor<Output = T>, const POLY: u128> Add<GF<T, POLY>> f
     }
 }
 
+trait GFType {}
+
 impl<T: GFStorageType, const POLY: u128> GFType for GF<T, POLY> {}
+
+trait GaloisField<T: GFType> {
+    type Elem;
+    fn zero() -> Self::Elem;
+    fn one() -> Self::Elem;
+}
 
 macro_rules! implement_traits_for_types {
     ($($type:ty,)*) => {

@@ -70,15 +70,28 @@ const fn alpha<const POLY: u128>() -> GFu8::<POLY> {
 impl<const POLY: u128> GFu8<POLY> {
     const TABLES: TablesU8 = generate_lut(POLY);
     const M: usize = calc_degree(POLY) as usize;
-    const NUM_ELEM: usize = 1 << Self::M;
+    const NUM_ELEM: u128 = 1 << Self::M;
     const DEGREE_MOD: isize = (Self::NUM_ELEM as isize) - 1;
 
     const ZERO: Self = zero::<POLY>();
     const ONE: Self = one::<POLY>();
     const ALPHA: GFu8<POLY> = alpha::<POLY>();
 
+    fn validate_value(&self) -> bool {
+        (self.value as u128) >= Self::NUM_ELEM
+    }
+
     fn new(value: u8) -> Self {
         Self {value: value}
+    }
+
+    fn new_validate(value: u8) -> Result<GFu8<POLY>, String> {
+        let x = Self {value: value};
+        if x.validate_value() {
+            return Ok(x);
+        } else {
+            return Err(format!("GF(2^{}) represents values in the range [0x00 - 0x{:02X}]. The value 0x{:02X} is outside this range.", Self::M, Self::DEGREE_MOD, value));
+        }
     }
 
     fn alpha_pow(mut power: isize) -> Self {
@@ -117,7 +130,7 @@ impl<const POLY: u128> GFu8<POLY> {
             panic!("{:#0X} is not irreducible. 1 is a root.", POLY);
         } else {
             for i in 2..Self::NUM_ELEM {
-                if Self::TABLES.exp_tbl[i] == 1 {
+                if Self::TABLES.exp_tbl[i as usize] == 1 {
                     panic!("{:#0X} is irreducible but not primitive. Can not use LUT version.", POLY);
                 }
             }

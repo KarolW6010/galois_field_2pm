@@ -2,15 +2,6 @@ use paste::paste;
 use std::fmt;
 use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
-#[allow(dead_code)]
-const fn calc_degree(x: u128) -> i8 {
-    if x > 0 {
-        return calc_degree(x >> 1) + 1;
-    } else {
-        return -1;
-    }
-}
-
 macro_rules! assign_operator_impl {
     ($($type:ty: $trait_name:ident: $trait_fn:ident: $op:tt,)*) => {
     $(
@@ -35,7 +26,7 @@ macro_rules! setup_gf {
             }
 
             const fn [<generate_lut_ $type:lower>](poly: u128) -> [<Tables $type:upper>] {
-                let m: usize = calc_degree(poly) as usize;
+                let m: usize = crate::calc_degree(poly) as usize;
                 let num_elems: usize = (1 << m) - 1;
                 let feedback_mask: $type = 1 << (m - 1);
             
@@ -85,7 +76,7 @@ macro_rules! setup_gf {
         
             impl<const POLY: u128> [<GF $type>]<POLY> {
                 const TABLES: [<Tables $type:upper>] = [<generate_lut_ $type:lower>](POLY);
-                const M: usize = calc_degree(POLY) as usize;
+                const M: usize = crate::calc_degree(POLY) as usize;
                 const NUM_ELEM: u128 = 1 << Self::M;
                 const DEGREE_MOD: isize = (Self::NUM_ELEM as isize) - 1;
 
@@ -227,7 +218,11 @@ macro_rules! setup_gf {
                 $type: DivAssign: div_assign: /,
             }
 
-            impl<const POLY: u128> crate::GaloisField for [<GF $type>]<POLY> {}
+            impl<const POLY: u128> crate::GaloisField for [<GF $type>]<POLY> {
+                fn validate_value(&self) -> bool {
+                    (self.value as u128) >= Self::NUM_ELEM
+                }
+            }
         }
     )*
     }
@@ -238,34 +233,9 @@ setup_gf!{
     u16,
 }
 
-impl<const POLY: u128> GFu8<POLY> {
-/*
-    fn validate_value(&self) -> bool {
-        (self.value as u128) >= Self::NUM_ELEM
-    }
-
-    fn new_validate(value: u8) -> Result<GFu8<POLY>, String> {
-        let x = Self {value: value};
-        if x.validate_value() {
-            return Ok(x);
-        } else {
-            return Err(format!("GF(2^{}) represents values in the range [0x00 - 0x{:02X}]. The value 0x{:02X} is outside this range.", Self::M, Self::DEGREE_MOD, value));
-        }
-    }
-*/
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn calc_degree_test() {
-        assert_eq!(calc_degree(0), -1);
-        for i in 0..=127 {
-            assert_eq!(calc_degree(1u128 << i), i);
-        }
-    }
 
     macro_rules! associative_test {
         ($type:ty, $op:tt) => {
@@ -389,7 +359,7 @@ mod tests {
     field_test! {
         u16: 0x3,
         u16: 0x7,
-        u16: 0xB,
+        u16: 0xb,
         u16: 0x13,
         u8: 0x25,
         u8: 0x43,

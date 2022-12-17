@@ -2,6 +2,20 @@ use paste::paste;
 use std::fmt;
 use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
+use crate::GaloisField;
+
+pub trait GaloisFieldLut: GaloisField {
+    type TableType;
+    const TABLES: Self::TableType;
+    const DEGREE_MOD: isize;
+
+    const ALPHA: Self;
+
+    fn alpha_pow(power: isize) -> Self;
+
+    fn log_alpha(&self) -> isize;
+}
+
 macro_rules! assign_operator_impl {
     ($($type:ty: $trait_name:ident: $trait_fn:ident: $op:tt,)*) => {
     $(
@@ -20,7 +34,81 @@ macro_rules! setup_gf {
     ($($type:ty,)*) => {
     $(
         paste! {
-            struct [<Tables $type:upper>] {
+            // Define the struct
+            #[derive(Clone, Copy)]
+            pub struct [<GF $type>]<const POLY: u128> {
+                value: $type,
+            }
+
+            // Implement the traits
+            impl<const POLY: u128> GaloisField for [<GF $type>]<POLY> {
+                type StorageType = $type;
+
+                const M: u128 = crate::calc_degree(POLY) as u128;
+                const NUM_ELEM: u128 = 1 << Self::M;
+
+                const ZERO: Self = [<zero_ $type>]::<POLY>();
+                const ONE: Self = [<one_ $type>]::<POLY>();
+
+                fn inverse(&self) -> Self {
+                    if *self == Self::ZERO {
+                        panic!("Can not take inverse of zero");
+                    } else {
+                        return Self::alpha_pow(Self::DEGREE_MOD - Self::log_alpha(self));
+                    }
+                }
+
+                fn new(value: $type) -> Self {
+                    Self {value: value}
+                }
+
+                fn validate(&self) -> bool {
+                    (self.value as u128) >= Self::NUM_ELEM
+                }
+
+                fn validate_poly() {
+                    // Check if the polynomial is irreducible
+                    if POLY == 0x3 {
+                        return;
+                    }
+            
+                    if POLY % 2 == 0 {
+                        panic!("{:#0X} is not irreducible. 0 is a root.", POLY);
+                    }
+                    if POLY.count_ones() % 2 == 0 {
+                        panic!("{:#0X} is not irreducible. 1 is a root.", POLY);
+                    }
+
+                    // Polynomial is irreducible, check if primitive
+                    for i in 2..Self::NUM_ELEM {
+                        if Self::TABLES.exp_tbl[i as usize] == 1 {
+                            panic!("{:#0X} is irreducible but not primitive. Can not use LUT version.", POLY);
+                        }
+                    }
+                }
+            }
+
+            impl<const POLY: u128> GaloisFieldLut for [<GF $type>]<POLY> {
+                type TableType = [<Tables $type:upper>];
+                const TABLES : Self::TableType = [<generate_lut_ $type:lower>](POLY);
+                const DEGREE_MOD: isize = (Self::NUM_ELEM as isize) - 1;
+
+                const ALPHA: Self = [<alpha_ $type>]::<POLY>();
+
+                fn alpha_pow(power: isize) -> Self {
+                    let mut pow = power % Self::DEGREE_MOD;
+                    pow += Self::DEGREE_MOD;
+                    pow %= Self::DEGREE_MOD;
+                    Self { value: Self::TABLES.exp_tbl[pow as usize] }
+                }
+
+                fn log_alpha(&self) -> isize {
+                    Self::TABLES.log_tbl[self.value as usize]
+                }
+            }
+
+            // Implement all the behind the scenes detail
+            pub struct [<Tables $type:upper>] {
                 exp_tbl: [$type; 1 << $type::BITS],
                 log_tbl: [isize; 1 << $type::BITS],
             }
@@ -54,11 +142,6 @@ macro_rules! setup_gf {
                 }
             }
 
-            #[derive(Clone, Copy)]
-            pub struct [<GF $type>]<const POLY: u128> {
-                value: $type,
-            }
-
             #[allow(dead_code)]
             const fn [<zero_ $type>]<const POLY: u128>() -> [<GF $type>]::<POLY> {
                 [<GF $type>]::<POLY> {value: 0}
@@ -73,68 +156,15 @@ macro_rules! setup_gf {
             const fn [<alpha_ $type>]<const POLY: u128>() -> [<GF $type>]::<POLY> {
                 [<GF $type>]::<POLY> {value: 2}
             }
-        
-            impl<const POLY: u128> [<GF $type>]<POLY> {
-                const TABLES: [<Tables $type:upper>] = [<generate_lut_ $type:lower>](POLY);
-                const M: usize = crate::calc_degree(POLY) as usize;
-                const NUM_ELEM: u128 = 1 << Self::M;
-                const DEGREE_MOD: isize = (Self::NUM_ELEM as isize) - 1;
-
-                const ZERO: Self = [<zero_ $type>]::<POLY>();
-                const ONE: Self = [<one_ $type>]::<POLY>();
-                const ALPHA: Self = [<alpha_ $type>]::<POLY>();
-
-                fn alpha_pow(mut power: isize) -> Self {
-                    power %= Self::DEGREE_MOD;
-                    power += Self::DEGREE_MOD;
-                    power %= Self::DEGREE_MOD;
-                    Self { value: Self::TABLES.exp_tbl[power as usize] }
-                }
-            
-                fn log_alpha(&self) -> isize {
-                    Self::TABLES.log_tbl[self.value as usize]
-                }
-            
-                fn inverse(&self) -> Self {
-                    if *self == Self::ZERO {
-                        panic!("Can not take inverse of zero");
-                    } else {
-                        return Self::alpha_pow(Self::DEGREE_MOD - Self::log_alpha(self));
-                    }
-                }
-
-                fn new(value: $type) -> Self {
-                    Self {value: value}
-                }
-
-                fn validate() {
-                    // Check if the polynomial is irreducible
-                    if POLY == 0x3 {
-                        return;
-                    }
-            
-                    if POLY % 2 == 0 {
-                        panic!("{:#0X} is not irreducible. 0 is a root.", POLY);
-                    }
-                    if POLY.count_ones() % 2 == 0 {
-                        panic!("{:#0X} is not irreducible. 1 is a root.", POLY);
-                    }
-
-                    // Polynomial is irreducible, check if primitive
-                    for i in 2..Self::NUM_ELEM {
-                        if Self::TABLES.exp_tbl[i as usize] == 1 {
-                            panic!("{:#0X} is irreducible but not primitive. Can not use LUT version.", POLY);
-                        }
-                    }
-                }
-            }
 
             impl<const POLY: u128> PartialEq for [<GF $type>]<POLY> {
                 fn eq(&self, other: &Self) -> bool {
                     self.value == other.value
                 }
             }
-            
+
+            impl<const POLY: u128> Eq for [<GF $type>]<POLY> {}
+
             impl<const POLY: u128> fmt::Debug for [<GF $type>]<POLY> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     if Self::M <= 4 {
@@ -162,8 +192,6 @@ macro_rules! setup_gf {
                     }
                 }
             }
-
-            impl<const POLY: u128> Eq for [<GF $type>]<POLY> {}
 
             impl<const POLY: u128> Add<[<GF $type>]<POLY>> for [<GF $type>]<POLY> {
                 type Output = Self;
@@ -217,12 +245,6 @@ macro_rules! setup_gf {
                 $type: MulAssign: mul_assign: *,
                 $type: DivAssign: div_assign: /,
             }
-
-            impl<const POLY: u128> crate::GaloisField for [<GF $type>]<POLY> {
-                fn validate_value(&self) -> bool {
-                    (self.value as u128) >= Self::NUM_ELEM
-                }
-            }
         }
     )*
     }
@@ -232,160 +254,3 @@ setup_gf!{
     u8,
     u16,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    macro_rules! associative_test {
-        ($type:ty, $op:tt) => {
-            for i in 0..GF::NUM_ELEM {
-                for j in 0..GF::NUM_ELEM {
-                    for k in 0..GF::NUM_ELEM {
-                        let a = GF::new(i as $type);
-                        let b = GF::new(j as $type);
-                        let c = GF::new(k as $type);
-                        assert_eq!(a $op (b $op c), (a $op b) $op c);
-                    }
-                }
-            }
-        }
-    }
-
-    macro_rules! commutative_test {
-        ($type:ty, $op:tt) => {
-            for i in 0..GF::NUM_ELEM {
-                for j in 0..GF::NUM_ELEM {
-                    let a = GF::new(i as $type);
-                    let b = GF::new(j as $type);
-                    assert_eq!(a $op b, b $op a);
-                }
-            }
-        }
-    }
-
-    macro_rules! identity_test {
-        ($type:ty, $op:tt, $identity:tt) => {
-            for i in 0..GF::NUM_ELEM {
-                let a = GF::new(i as $type);
-                assert_eq!(a $op GF::$identity, a);
-            }
-        }
-    }
-
-    macro_rules! inverse_addition_test {
-        ($type:ty) => {
-            for i in 0..GF::NUM_ELEM {
-                let a = GF::new(i as $type);
-                assert_eq!(a + a, GF::ZERO);
-            }
-        }
-    }
-
-    macro_rules! inverse_multiplication_test {
-        ($type:ty) => {
-            for i in 1..GF::NUM_ELEM {
-                let a = GF::new(i as $type);
-                assert_eq!(a * a.inverse(), GF::ONE);
-                assert_eq!(a / a, GF::ONE);
-            }
-        }
-    }
-
-    macro_rules! addition_test {
-        ($type:ty) => {
-            associative_test!($type, +);
-            commutative_test!($type, +);
-            identity_test!($type, +, ZERO);
-            inverse_addition_test!($type);
-        }
-    }
-
-    macro_rules! multiplication_test {
-        ($type:ty) => {
-            associative_test!($type, *);
-            commutative_test!($type, *);
-            identity_test!($type, *, ONE);
-            inverse_multiplication_test!($type);
-        }
-    }
-
-    macro_rules! distributive_test {
-        ($type:ty) => {
-            for i in 0..GF::NUM_ELEM {
-                for j in 0..GF::NUM_ELEM {
-                    for k in 0..GF::NUM_ELEM {
-                        let a = GF::new(i as $type);
-                        let b = GF::new(j as $type);
-                        let c = GF::new(k as $type);
-                        assert_eq!(a * (b + c), a * b + a * c);
-                    }
-                }
-            }
-        }
-    }
-
-    macro_rules! field_test {
-        ($($type:ty: $poly:expr,)*) => {
-        $(
-            paste! {
-                #[test]
-                fn [<gf_ $poly>]() {
-                    type GF = [<GF $type>]<$poly>;
-                    GF::validate();
-                    addition_test!($type);
-                    multiplication_test!($type);
-                    distributive_test!($type);
-                }
-
-                #[test]
-                #[should_panic]
-                fn [<div_by_0_ $poly>]() {
-                    type GF = [<GF $type>]<$poly>;
-                    let _ = GF::ONE / GF::ZERO;
-                }
-
-                #[test]
-                #[should_panic]
-                fn [<inverse_of_0_ $poly>]() {
-                    type GF = [<GF $type>]<$poly>;
-                    let _ = GF::ZERO.inverse();
-                }
-            }
-        )*
-        }
-    }
-
-    field_test! {
-        u16: 0x3,
-        u16: 0x7,
-        u16: 0xb,
-        u16: 0x13,
-        u8: 0x25,
-        u8: 0x43,
-        u8: 0x83,
-        u8: 0x163,
-    }
-
-    macro_rules! check_not_primitive {
-        ($($type:ty: $poly:expr,)*) => {
-        $(
-            paste! {
-                #[test]
-                #[should_panic]
-                fn [<not_primitive_ $poly>]() {
-                    [<GF $type>]::<$poly>::validate();
-                }
-            }
-        )*
-        }
-    }
-
-    check_not_primitive! {
-        u8: 0x4,    // Zero is a root
-        u8: 0x5,    // One is a root
-        u8: 0x15,   // Irreducible but not primitive    
-        u16: 0x203, // Irreducible but not primitive
-    }
-}
-

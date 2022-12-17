@@ -5,10 +5,6 @@ use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 use crate::GaloisField;
 
 pub trait GaloisFieldLut: GaloisField {
-    type TableType;
-    const TABLES: Self::TableType;
-    const DEGREE_MOD: isize;
-
     const ALPHA: Self;
 
     fn alpha_pow(power: isize) -> Self;
@@ -89,10 +85,6 @@ macro_rules! setup_gf {
             }
 
             impl<const POLY: u128> GaloisFieldLut for [<GF $type>]<POLY> {
-                type TableType = [<Tables $type:upper>];
-                const TABLES : Self::TableType = [<generate_lut_ $type:lower>](POLY);
-                const DEGREE_MOD: isize = (Self::NUM_ELEM as isize) - 1;
-
                 const ALPHA: Self = [<alpha_ $type>]::<POLY>();
 
                 fn alpha_pow(power: isize) -> Self {
@@ -108,7 +100,7 @@ macro_rules! setup_gf {
             }
 
             // Implement all the behind the scenes detail
-            pub struct [<Tables $type:upper>] {
+            struct [<Tables $type:upper>] {
                 exp_tbl: [$type; 1 << $type::BITS],
                 log_tbl: [isize; 1 << $type::BITS],
             }
@@ -140,6 +132,11 @@ macro_rules! setup_gf {
                     exp_tbl: exp_tbl,
                     log_tbl: log_tbl,
                 }
+            }
+
+            impl<const POLY: u128> [<GF $type>]<POLY> {
+                const TABLES : [<Tables $type:upper>] = [<generate_lut_ $type:lower>](POLY);
+                const DEGREE_MOD: isize = (Self::NUM_ELEM as isize) - 1;
             }
 
             #[allow(dead_code)]

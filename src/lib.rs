@@ -54,12 +54,12 @@ pub trait GaloisField:
     + Debug
     + Display
     + Add
-    + Sub
-    + Mul
-    + Div
     + AddAssign
+    + Sub
     + SubAssign
+    + Mul
     + MulAssign
+    + Div
     + DivAssign
 {
     /// The underlying type used to store the representation of an element in the field
@@ -77,7 +77,7 @@ pub trait GaloisField:
     /// The multiplicative identity of the field
     const ONE: Self;
 
-    /// Takes the inverse of an element in the field. Panics when inverting the additive identity
+    /// Takes the inverse of an element in the field. Panics when inverting the additive identity (aka zero)
     fn inverse(&self) -> Self;
 
     /// Constructs a GF element using the underlying storage type

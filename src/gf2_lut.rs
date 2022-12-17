@@ -54,7 +54,7 @@ macro_rules! setup_gf {
                     if *self == Self::ZERO {
                         panic!("Can not take inverse of zero");
                     } else {
-                        return Self::alpha_pow(Self::DEGREE_MOD - Self::log_alpha(self));
+                        return Self::alpha_pow(Self::DEGREE_MOD - self.log_alpha());
                     }
                 }
 
@@ -233,4 +233,38 @@ macro_rules! setup_gf {
 setup_gf! {
     u8,
     u16,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! lut_specific_tests {
+    ($($type:ty: $poly:expr,)*) => {
+        $(
+            paste! {
+                #[test]
+                fn [<alpha_pow_log_alpha_ $poly>]() {
+                    type GF = [<GF $type>]<$poly>;
+                    assert_eq!(GF::ZERO.log_alpha(), -1);
+
+                    for i in 1..GF::DEGREE_MOD {
+                        assert_eq!(GF::alpha_pow(i as isize).log_alpha(), i as isize);
+                    }
+                }
+            }
+        )*
+    }
+    }
+
+    lut_specific_tests! {
+        u16: 0x3,
+        u16: 0x7,
+        u16: 0xb,
+        u16: 0x13,
+        u8: 0x25,
+        u8: 0x43,
+        u8: 0x83,
+        u8: 0x11d,
+    }
 }

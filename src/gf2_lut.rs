@@ -4,11 +4,15 @@ use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 use crate::GaloisField;
 
+/// A trait used to indicate that the implementation of the Galois Field uses a look up table (LUT)
 pub trait GaloisFieldLut: GaloisField {
+    /// The primitive element of the field α. Stored as the value 2.
     const ALPHA: Self;
 
+    /// Returns α<sup>power</sup>
     fn alpha_pow(power: isize) -> Self;
 
+    /// For input α<sup>power</sup> returns power. For 0 returns -1.
     fn log_alpha(&self) -> isize;
 }
 
@@ -33,7 +37,7 @@ macro_rules! setup_gf {
             // Define the struct
             #[derive(Clone, Copy)]
             pub struct [<GF $type>]<const POLY: u128> {
-                value: $type,
+                pub value: $type,
             }
 
             // Implement the traits
@@ -60,27 +64,6 @@ macro_rules! setup_gf {
 
                 fn validate(&self) -> bool {
                     (self.value as u128) >= Self::NUM_ELEM
-                }
-
-                fn validate_poly() {
-                    // Check if the polynomial is irreducible
-                    if POLY == 0x3 {
-                        return;
-                    }
-            
-                    if POLY % 2 == 0 {
-                        panic!("{:#0X} is not irreducible. 0 is a root.", POLY);
-                    }
-                    if POLY.count_ones() % 2 == 0 {
-                        panic!("{:#0X} is not irreducible. 1 is a root.", POLY);
-                    }
-
-                    // Polynomial is irreducible, check if primitive
-                    for i in 2..Self::NUM_ELEM {
-                        if Self::TABLES.exp_tbl[i as usize] == 1 {
-                            panic!("{:#0X} is irreducible but not primitive. Can not use LUT version.", POLY);
-                        }
-                    }
                 }
             }
 

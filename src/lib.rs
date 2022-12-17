@@ -1,3 +1,37 @@
+//! Galois Field (2<sup>M</sup>) arithmetic support.
+//! 
+//! galois_field_2pm provides wrappers for the u8, u16, u32, u64, and u128 types that implement Galois Field arithmetic. There are two implementations:
+//! - A look up table based implementation for multiplication and division for Galois Fields defined by a primitive polynomial
+//! - A computation based implementation for multiplication and division for Galois Fields defined by an irreducible polynomial
+//! 
+//! # Getting Started
+//! 
+//! To start using a Galois Field defined by the irreducible polynomial p(x) ∈ GF(2)\[x\] start by representing p(x) as a u128. 
+//! An irrecuible polynomial of degree M defines the field GF(2<sup>M</sup>) = GF(2)\[x\] / p(x)
+//! Next we need to choose how the field is implemented:
+//!     If p(x) is primitive and M <= 16 then the look up table implementation can be used (module gf2_lut)
+//!     Else use the computation based implementation (module gf2)
+//! Lastly we must use one of the structs to represent the elements in the field. The struct GFuX can be used for M <= X.
+//! At this point we can define the GF type and use it.
+//! 
+//! Consider the example below
+//! ```
+//! use galois_field_2pm::{GaloisField, gf2_lut};
+//! 
+//! // First lets define out Galois Field
+//! // For irreducible polynomial p(x) = x<sup>3</sup> + x + 1 the u128 representation is given by 0xB.
+//! // Note that this p(x) is primitive so we can use either gf2_lut of gf2
+//! // Note that GFu8 can represent the field generate by 0xB as the degree of 0xB is 3 and 3 <= 8. For p(x) = 0x211 (degree 9), GFu8 can not be used. GFu16 must be used instead
+//! type GF = gf2_lut::GFu8::<0xB>;
+//! let a = GF::ONE;
+//! let b = GF::new(2);
+//! let c = GF {value: 3};
+//! 
+//! let d = (a + b * c).inverse();
+//! ```
+//! 
+//! For example p(x) = x<sup>3</sup> + x + 1 is represented as 0xB.
+
 #[cfg(test)]
 use paste::paste;
 
@@ -6,23 +40,32 @@ use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 pub mod gf2_lut;
 
+/// A trait used to indicate that a type can be used to represent the elements of a Galois Field.
 pub trait GaloisField: Clone + Copy + Eq + PartialEq + Debug + Display +
                        Add + Sub + Mul + Div + AddAssign + SubAssign + MulAssign + DivAssign {
+    /// The underlying type used to store the representation of an element in the field
     type StorageType;
 
+    /// The degree of the polynomial used to define the field. Specifies GF(2<sup>M</sup>)
     const M: u128;
+
+    /// The number of elements in the field. This value is 2<sup>M</sup>
     const NUM_ELEM: u128;
 
+    /// The additive identity of the field
     const ZERO: Self;
+
+    /// The multiplicative identity of the field
     const ONE: Self;
 
+    /// Takes the inverse of an element in the field. Panics when inverting the additive identity
     fn inverse(&self) -> Self;
 
+    /// Constructs a GF element using the underlying storage type
     fn new(value: Self::StorageType) -> Self;
 
+    /// Used to check if the value stored is a valid element in the current field
     fn validate(&self) -> bool;
-
-    fn validate_poly();
 }
 
 #[allow(dead_code)]
@@ -141,7 +184,6 @@ mod tests {
                 #[test]
                 fn [<gf_ $poly>]() {
                     type GF = gf2_lut::[<GF $type>]<$poly>;
-                    GF::validate_poly();
                     addition_test!($type);
                     multiplication_test!($type);
                     distributive_test!($type);
@@ -173,27 +215,6 @@ mod tests {
         u8: 0x25,
         u8: 0x43,
         u8: 0x83,
-        u8: 0x163,
-    }
-
-    macro_rules! check_not_primitive {
-        ($($type:ty: $poly:expr,)*) => {
-        $(
-            paste! {
-                #[test]
-                #[should_panic]
-                fn [<not_primitive_ $poly>]() {
-                    gf2_lut::[<GF $type>]::<$poly>::validate_poly();
-                }
-            }
-        )*
-        }
-    }
-
-    check_not_primitive! {
-        u8: 0x4,    // Zero is a root
-        u8: 0x5,    // One is a root
-        u8: 0x15,   // Irreducible but not primitive    
-        u16: 0x203, // Irreducible but not primitive
+        u8: 0x11d,
     }
 }

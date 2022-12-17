@@ -1,6 +1,6 @@
 use paste::paste;
 use std::fmt;
-use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 use crate::GaloisField;
 
@@ -92,17 +92,17 @@ macro_rules! setup_gf {
                 let m: usize = crate::calc_degree(poly) as usize;
                 let num_elems: usize = (1 << m) - 1;
                 let feedback_mask: $type = 1 << (m - 1);
-            
+
                 let mut exp_tbl: [$type; 1 << $type::BITS] = [0; 1 << $type::BITS];
                 let mut log_tbl: [isize; 1 << $type::BITS] = [0; 1 << $type::BITS];
-                
+
                 log_tbl[0] = -1;
                 let mut value: $type = 1;
                 let mut i: usize = 0;
                 while i < num_elems {
                     exp_tbl[i] = value;
                     log_tbl[exp_tbl[i] as usize] = i as isize;
-                
+
                     let leading_1: bool = value >= feedback_mask;
                     value <<= 1;
                     if leading_1 {
@@ -110,7 +110,7 @@ macro_rules! setup_gf {
                     }
                     i += 1;
                 }
-                
+
                 [<Tables $type:upper>] {
                     exp_tbl: exp_tbl,
                     log_tbl: log_tbl,
@@ -158,7 +158,7 @@ macro_rules! setup_gf {
                     }
                 }
             }
-            
+
             impl<const POLY: u128> fmt::Display for [<GF $type>]<POLY> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     if Self::M <= 4 {
@@ -175,27 +175,27 @@ macro_rules! setup_gf {
 
             impl<const POLY: u128> Add<[<GF $type>]<POLY>> for [<GF $type>]<POLY> {
                 type Output = Self;
-            
+
                 fn add(self, other: Self) -> Self {
                     Self {
                         value: self.value ^ other.value,
                     }
                 }
             }
-            
+
             impl<const POLY: u128> Sub<[<GF $type>]<POLY>> for [<GF $type>]<POLY> {
                 type Output = Self;
-            
+
                 fn sub(self, other: Self) -> Self {
                     Self {
                         value: self.value ^ other.value,
                     }
                 }
             }
-            
+
             impl<const POLY: u128> Mul<[<GF $type>]<POLY>> for [<GF $type>]<POLY> {
                 type Output = Self;
-            
+
                 fn mul(self, other: Self) -> Self {
                     if (self == Self::ZERO) || (other == Self::ZERO) {
                         return Self::ZERO;
@@ -204,10 +204,10 @@ macro_rules! setup_gf {
                     }
                 }
             }
-            
+
             impl<const POLY: u128> Div<[<GF $type>]<POLY>> for [<GF $type>]<POLY> {
                 type Output = Self;
-            
+
                 fn div(self, other: Self) -> Self {
                     if other == Self::ZERO {
                         panic!("Divide by 0");
@@ -230,7 +230,7 @@ macro_rules! setup_gf {
     }
 }
 
-setup_gf!{
+setup_gf! {
     u8,
     u16,
 }

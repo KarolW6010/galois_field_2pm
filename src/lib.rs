@@ -1,48 +1,67 @@
 //! Galois Field (2<sup>M</sup>) arithmetic support.
-//! 
+//!
 //! galois_field_2pm provides wrappers for the u8, u16, u32, u64, and u128 types that implement Galois Field arithmetic. There are two implementations:
 //! - A look up table based implementation for multiplication and division for Galois Fields defined by a primitive polynomial
 //! - A computation based implementation for multiplication and division for Galois Fields defined by an irreducible polynomial
-//! 
+//!
 //! # Getting Started
+//!
+//! To start using a Galois Field defined by the irreducible polynomial p(x) ∈ GF(2)\[x\] start by representing p(x) as a u128.
 //! 
-//! To start using a Galois Field defined by the irreducible polynomial p(x) ∈ GF(2)\[x\] start by representing p(x) as a u128. 
 //! An irrecuible polynomial of degree M defines the field GF(2<sup>M</sup>) = GF(2)\[x\] / p(x)
-//! Next we need to choose how the field is implemented:
-//!     If p(x) is primitive and M <= 16 then the look up table implementation can be used (module gf2_lut)
-//!     Else use the computation based implementation (module gf2)
-//! Lastly we must use one of the structs to represent the elements in the field. The struct GFuX can be used for M <= X.
-//! At this point we can define the GF type and use it.
 //! 
+//! Next we need to choose how the field is implemented:
+//! 
+//!   - If p(x) is primitive and M <= 16 then the look up table implementation can be used (module gf2_lut)
+//! 
+//!   - Else use the computation based implementation (module gf2)
+//! 
+//! Lastly we must use one of the structs to represent the elements in the field. The struct GFuX can be used for M ≤ X.
+//! 
+//! At this point we can define the GF type and use it.
+//!
 //! Consider the example below
 //! ```
 //! use galois_field_2pm::{GaloisField, gf2_lut};
-//! 
+//!
 //! // First lets define out Galois Field
-//! // For irreducible polynomial p(x) = x<sup>3</sup> + x + 1 the u128 representation is given by 0xB.
+//! // For irreducible polynomial p(x) = x^3 + x + 1 the u128 representation is given by 0xB.
 //! // Note that this p(x) is primitive so we can use either gf2_lut of gf2
-//! // Note that GFu8 can represent the field generate by 0xB as the degree of 0xB is 3 and 3 <= 8. For p(x) = 0x211 (degree 9), GFu8 can not be used. GFu16 must be used instead
+//! // Note that GFu8 can represent the field generate by 0xB as the degree of 0xB is 3 and 3 ≤ 8.
+//! //     For p(x) = 0x211 (degree 9), GFu8 can not be used. GFu16 must be used instead
 //! type GF = gf2_lut::GFu8::<0xB>;
 //! let a = GF::ONE;
 //! let b = GF::new(2);
 //! let c = GF {value: 3};
-//! 
+//!
 //! let d = (a + b * c).inverse();
 //! ```
-//! 
-//! For example p(x) = x<sup>3</sup> + x + 1 is represented as 0xB.
 
 #[cfg(test)]
 use paste::paste;
 
 use std::fmt::{Debug, Display};
-use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 pub mod gf2_lut;
 
 /// A trait used to indicate that a type can be used to represent the elements of a Galois Field.
-pub trait GaloisField: Clone + Copy + Eq + PartialEq + Debug + Display +
-                       Add + Sub + Mul + Div + AddAssign + SubAssign + MulAssign + DivAssign {
+pub trait GaloisField:
+    Clone
+    + Copy
+    + Eq
+    + PartialEq
+    + Debug
+    + Display
+    + Add
+    + Sub
+    + Mul
+    + Div
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+{
     /// The underlying type used to store the representation of an element in the field
     type StorageType;
 
@@ -131,7 +150,7 @@ mod tests {
                 let a = GF::new(i as $type);
                 assert_eq!(a + a, GF::ZERO);
             }
-        }
+        };
     }
 
     macro_rules! inverse_multiplication_test {
@@ -141,7 +160,7 @@ mod tests {
                 assert_eq!(a * a.inverse(), GF::ONE);
                 assert_eq!(a / a, GF::ONE);
             }
-        }
+        };
     }
 
     macro_rules! addition_test {
@@ -174,7 +193,7 @@ mod tests {
                     }
                 }
             }
-        }
+        };
     }
 
     macro_rules! field_test {

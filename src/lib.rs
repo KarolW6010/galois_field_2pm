@@ -7,17 +7,17 @@
 //! # Getting Started
 //!
 //! To start using a Galois Field defined by the irreducible polynomial p(x) ∈ GF(2)\[x\] start by representing p(x) as a u128.
-//! 
+//!
 //! An irrecuible polynomial of degree M defines the field GF(2<sup>M</sup>) = GF(2)\[x\] / p(x)
-//! 
+//!
 //! Next we need to choose how the field is implemented:
-//! 
+//!
 //!   - If p(x) is primitive and M <= 16 then the look up table implementation can be used (module gf2_lut)
-//! 
+//!
 //!   - Else use the computation based implementation (module gf2)
-//! 
+//!
 //! Lastly we must use one of the structs to represent the elements in the field. The struct GFuX can be used for M ≤ X.
-//! 
+//!
 //! At this point we can define the GF type and use it.
 //!
 //! Consider the example below
@@ -43,6 +43,7 @@ use paste::paste;
 use std::fmt::{Debug, Display};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
+pub mod gf2;
 pub mod gf2_lut;
 
 /// A trait used to indicate that a type can be used to represent the elements of a Galois Field.

@@ -240,7 +240,7 @@ mod tests {
     use super::*;
 
     macro_rules! lut_specific_tests {
-    ($($type:ty: $poly:expr,)*) => {
+        ($($type:ty: $poly:expr,)*) => {
         $(
             paste! {
                 #[test]
@@ -254,7 +254,7 @@ mod tests {
                 }
             }
         )*
-    }
+        }
     }
 
     lut_specific_tests! {

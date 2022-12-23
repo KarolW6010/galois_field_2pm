@@ -1,6 +1,6 @@
 use paste::paste;
-use std::fmt;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use core::fmt;
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 use crate::GaloisField;
 
@@ -35,7 +35,8 @@ macro_rules! setup_gf {
     $(
         paste! {
             // Define the struct
-            #[derive(Clone, Copy)]
+            #[repr(transparent)]
+            #[derive(Clone, Copy, Eq, PartialEq)]
             pub struct [<GF $type>]<const POLY: u128> {
                 pub value: $type,
             }
@@ -47,8 +48,8 @@ macro_rules! setup_gf {
                 const M: u128 = crate::calc_degree(POLY) as u128;
                 const NUM_ELEM: u128 = 1 << Self::M;
 
-                const ZERO: Self = [<zero_ $type>]::<POLY>();
-                const ONE: Self = [<one_ $type>]::<POLY>();
+                const ZERO: Self = Self {value: 0};
+                const ONE: Self = Self {value: 1};
 
                 fn inverse(&self) -> Self {
                     if *self == Self::ZERO {
@@ -68,7 +69,7 @@ macro_rules! setup_gf {
             }
 
             impl<const POLY: u128> GaloisFieldLut for [<GF $type>]<POLY> {
-                const ALPHA: Self = [<alpha_ $type>]::<POLY>();
+                const ALPHA: Self = Self {value: 2};
 
                 fn alpha_pow(power: isize) -> Self {
                     let mut pow = power % Self::DEGREE_MOD;
@@ -121,29 +122,6 @@ macro_rules! setup_gf {
                 const TABLES : [<Tables $type:upper>] = [<generate_lut_ $type:lower>](POLY);
                 const DEGREE_MOD: isize = (Self::NUM_ELEM as isize) - 1;
             }
-
-            #[allow(dead_code)]
-            const fn [<zero_ $type>]<const POLY: u128>() -> [<GF $type>]::<POLY> {
-                [<GF $type>]::<POLY> {value: 0}
-            }
-
-            #[allow(dead_code)]
-            const fn [<one_ $type>]<const POLY: u128>() -> [<GF $type>]::<POLY> {
-                [<GF $type>]::<POLY> {value: 1}
-            }
-
-            #[allow(dead_code)]
-            const fn [<alpha_ $type>]<const POLY: u128>() -> [<GF $type>]::<POLY> {
-                [<GF $type>]::<POLY> {value: 2}
-            }
-
-            impl<const POLY: u128> PartialEq for [<GF $type>]<POLY> {
-                fn eq(&self, other: &Self) -> bool {
-                    self.value == other.value
-                }
-            }
-
-            impl<const POLY: u128> Eq for [<GF $type>]<POLY> {}
 
             impl<const POLY: u128> fmt::Debug for [<GF $type>]<POLY> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

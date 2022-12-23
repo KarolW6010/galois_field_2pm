@@ -40,8 +40,11 @@
 #[cfg(test)]
 use paste::paste;
 
-use std::fmt::{Debug, Display};
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+#[cfg(test)]
+use rand::Rng;
+
+use core::fmt::{Debug, Display};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 pub mod gf2;
 pub mod gf2_lut;
@@ -89,12 +92,8 @@ pub trait GaloisField:
 }
 
 #[allow(dead_code)]
-const fn calc_degree(x: u128) -> i8 {
-    if x > 0 {
-        return calc_degree(x >> 1) + 1;
-    } else {
-        return -1;
-    }
+const fn calc_degree(x: u128) -> i16 {
+    127 - (x.leading_zeros() as i16)
 }
 
 #[cfg(test)]
@@ -198,12 +197,12 @@ mod tests {
     }
 
     macro_rules! field_test {
-        ($($type:ty: $poly:expr,)*) => {
+        ($($mod:tt: $type:ty: $poly:expr,)*) => {
         $(
             paste! {
                 #[test]
-                fn [<gf_ $poly>]() {
-                    type GF = gf2_lut::[<GF $type>]<$poly>;
+                fn [<$mod _gf_ $poly>]() {
+                    type GF = $mod::[<GF $type>]<$poly>;
                     addition_test!($type);
                     multiplication_test!($type);
                     distributive_test!($type);
@@ -211,15 +210,15 @@ mod tests {
 
                 #[test]
                 #[should_panic]
-                fn [<div_by_0_ $poly>]() {
-                    type GF = gf2_lut::[<GF $type>]<$poly>;
+                fn [<$mod _div_by_0_ $poly>]() {
+                    type GF = $mod::[<GF $type>]<$poly>;
                     let _ = GF::ONE / GF::ZERO;
                 }
 
                 #[test]
                 #[should_panic]
-                fn [<inverse_of_0_ $poly>]() {
-                    type GF = gf2_lut::[<GF $type>]<$poly>;
+                fn [<$mod _inverse_of_0_ $poly>]() {
+                    type GF = $mod::[<GF $type>]<$poly>;
                     let _ = GF::ZERO.inverse();
                 }
             }
@@ -228,13 +227,142 @@ mod tests {
     }
 
     field_test! {
-        u16: 0x3,
-        u16: 0x7,
-        u16: 0xb,
-        u16: 0x13,
-        u8: 0x25,
-        u8: 0x43,
-        u8: 0x83,
-        u8: 0x11d,
+        gf2_lut: u16: 0x3,
+        gf2_lut: u16: 0x7,
+        gf2_lut: u16: 0xb,
+        gf2_lut: u16: 0x13,
+        gf2_lut: u8: 0x25,
+        gf2_lut: u8: 0x43,
+        gf2_lut: u8: 0x83,
+        gf2_lut: u8: 0x11d,
+
+        gf2: u16: 0x3,
+        gf2: u16: 0x7,
+        gf2: u16: 0xb,
+        gf2: u16: 0x13,
+        gf2: u8: 0x25,
+        gf2: u8: 0x43,
+        gf2: u8: 0x83,
+        gf2: u8: 0x11d,
+    }
+
+    macro_rules! associative_spot_test {
+        ($type:ty, $a:tt, $b:tt, $c:tt, $op:tt) => {
+            for i in 0..NUM_VALS {
+                for j in 0..NUM_VALS {
+                    for k in 0..NUM_VALS {
+                        assert_eq!($a[i] $op ($b[j] $op $c[k]), ($a[i] $op $b[j]) $op $c[k]);
+                    }
+                }
+            }
+        }
+    }
+
+    macro_rules! commutative_spot_test {
+        ($type:ty, $a:tt, $b:tt, $op:tt) => {
+            for i in 0..NUM_VALS {
+                for j in 0..NUM_VALS {
+                    assert_eq!($a[i] $op $b[j], $b[j] $op $a[i]);
+                }
+            }
+        }
+    }
+
+    macro_rules! identity_spot_test {
+        ($type:ty, $a:tt, $op:tt, $identity:tt) => {
+            for i in 0..NUM_VALS {
+                assert_eq!($a[i] $op GF::$identity, $a[i]);
+            }
+        }
+    }
+
+    macro_rules! inverse_addition_spot_test {
+        ($type:ty, $a:tt) => {
+            for i in 0..NUM_VALS {
+                assert_eq!($a[i] + $a[i], GF::ZERO);
+            }
+        };
+    }
+
+    macro_rules! inverse_multiplication_spot_test {
+        ($type:ty, $a:tt) => {
+            for i in 0..NUM_VALS {
+                assert_eq!($a[i] * $a[i].inverse(), GF::ONE);
+                assert_eq!($a[i] / $a[i], GF::ONE);
+            }
+        };
+    }
+
+    macro_rules! addition_spot_test {
+        ($type:ty, $a:tt, $b:tt, $c:tt) => {
+            associative_spot_test!($type, $a, $b, $c, +);
+            commutative_spot_test!($type, $a, $b, +);
+            identity_spot_test!($type, $a, +, ZERO);
+            inverse_addition_spot_test!($type, $a);
+        }
+    }
+
+    macro_rules! multiplication_spot_test {
+        ($type:ty, $a:tt, $b:tt, $c:tt) => {
+            associative_spot_test!($type, $a, $b, $c, *);
+            commutative_spot_test!($type, $a, $b, *);
+            identity_spot_test!($type, $a, *, ONE);
+            inverse_multiplication_spot_test!($type, $a);
+        }
+    }
+
+    macro_rules! distributive_spot_test {
+        ($type:ty, $a:tt, $b:tt, $c:tt) => {
+            for i in 0..NUM_VALS {
+                for j in 0..NUM_VALS {
+                    for k in 0..NUM_VALS {
+                        assert_eq!($a[i] * ($b[j] + $c[k]), $a[i] * $b[j] + $a[i] * $c[k]);
+                    }
+                }
+            }
+        };
+    }
+
+    macro_rules! field_spot_test {
+        ($($mod:tt: $type:ty: $poly:expr,)*) => {
+        $(
+            paste! {
+                #[test]
+                fn [<$mod _spot_gf_ $poly>]() {
+                    type GF = $mod::[<GF $type>]<$poly>;
+
+                    const NUM_VALS: usize = 30;
+                    let mut a: [GF; NUM_VALS] = [GF::ZERO; NUM_VALS];
+                    let mut b: [GF; NUM_VALS] = [GF::ZERO; NUM_VALS];
+                    let mut c: [GF; NUM_VALS] = [GF::ZERO; NUM_VALS];
+                    for i in 0..NUM_VALS {
+                        a[i] = GF::new(rand::thread_rng().gen_range(1..GF::NUM_ELEM) as $type);
+                        b[i] = GF::new(rand::thread_rng().gen_range(1..GF::NUM_ELEM) as $type);
+                        c[i] = GF::new(rand::thread_rng().gen_range(1..GF::NUM_ELEM) as $type);
+                    }
+
+                    addition_spot_test!($type, a, b, c);
+                    multiplication_spot_test!($type, a, b, c);
+                    distributive_spot_test!($type, a, b, c);
+                }
+            }
+        )*
+        }
+    }
+
+    field_spot_test! {
+        gf2_lut: u16: 0x211,
+        gf2_lut: u16: 0x409,
+        gf2_lut: u16: 0x805,
+        gf2_lut: u16: 0x1053,
+
+        gf2: u16: 0x211,
+        gf2: u16: 0x409,
+        gf2: u16: 0x805,
+        gf2: u16: 0x1053,
+        gf2: u32: 0x20009,
+        gf2: u64: 0x2_0000_2001,
+        gf2: u128: 0x2_0000_0000_0004_0001,
+        gf2: u128: 0x8000_0000_0000_0000_0000_0000_0000_0003,
     }
 }

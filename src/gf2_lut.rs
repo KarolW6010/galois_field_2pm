@@ -1,6 +1,6 @@
-use paste::paste;
 use core::fmt;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use paste::paste;
 
 use crate::GaloisField;
 

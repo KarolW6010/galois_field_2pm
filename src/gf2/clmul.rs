@@ -1,5 +1,5 @@
+use core::ops::{BitAnd, BitOr, BitXor, BitXorAssign, Not, Shl, ShlAssign, Shr, ShrAssign};
 use paste::paste;
-use core::ops::{BitAnd, BitOr, Not, BitXor, BitXorAssign, Shl, ShlAssign, Shr, ShrAssign};
 
 use crate::calc_degree;
 
@@ -126,8 +126,11 @@ impl Shl<usize> for U256 {
                     upper: (self.upper << shift) ^ spill,
                 }
             }
-            128..=255 => Self { lower: 0, upper: (self.lower << (shift - 128)) },
-            _ => Self { lower: 0, upper: 0 }
+            128..=255 => Self {
+                lower: 0,
+                upper: (self.lower << (shift - 128)),
+            },
+            _ => Self { lower: 0, upper: 0 },
         }
     }
 }
@@ -151,8 +154,11 @@ impl Shr<usize> for U256 {
                     upper: self.upper >> shift,
                 }
             }
-            128..=255 => Self { lower: (self.upper >> (shift - 128)), upper: 0 },
-            _ => Self { lower: 0, upper: 0 }
+            128..=255 => Self {
+                lower: (self.upper >> (shift - 128)),
+                upper: 0,
+            },
+            _ => Self { lower: 0, upper: 0 },
         }
     }
 }
@@ -250,10 +256,10 @@ fn calc_degree_256(x: U256) -> i32 {
 
 impl GF2PolyDiv for U256 {
     type Elem = U256;
-    
+
     fn gf2_poly_div(dividend: Self::Elem, divisor: Self::Elem) -> (Self::Elem, Self::Elem) {
-        const ZERO: U256 = U256{upper: 0, lower: 0};
-        const ONE: U256 = U256{upper: 0, lower: 1};
+        const ZERO: U256 = U256 { upper: 0, lower: 0 };
+        const ONE: U256 = U256 { upper: 0, lower: 1 };
         if divisor == ZERO {
             panic!("Can not divide by zero");
         }
@@ -261,16 +267,16 @@ impl GF2PolyDiv for U256 {
             return (dividend, ZERO);
         }
 
-        let mut q: Self::Elem = ZERO;  // Quotient
-        let mut r: Self::Elem = ZERO;  // Remainder
+        let mut q: Self::Elem = ZERO; // Quotient
+        let mut r: Self::Elem = ZERO; // Remainder
 
-        let deg_divisor = calc_degree_256(divisor);     // Degree of divisor
-        let d = deg_divisor - 1;                        // Position of last register
-        let mask: Self::Elem = divisor & !(U256::new(1, deg_divisor as u32));   // The divisor with the leading x^n term zeroed out
+        let deg_divisor = calc_degree_256(divisor); // Degree of divisor
+        let d = deg_divisor - 1; // Position of last register
+        let mask: Self::Elem = divisor & !(U256::new(1, deg_divisor as u32)); // The divisor with the leading x^n term zeroed out
 
         for cur_deg in (0..=calc_degree_256(dividend)).rev() {
             let bit: bool = ((r >> d as usize).lower & 0x1) > 0;
-            
+
             if bit {
                 q = q << 1;
                 q.lower |= 0x1;

@@ -1,10 +1,10 @@
-use paste::paste;
 use core::fmt;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use paste::paste;
 
 mod clmul;
-use clmul::{CarryLessMultiply, GF2PolyDiv, U256};
 use crate::GaloisField;
+use clmul::{CarryLessMultiply, GF2PolyDiv, U256};
 
 macro_rules! assign_operator_impl {
     ($($type:ty: $trait_name:ident: $trait_fn:ident: $op:tt,)*) => {
@@ -138,7 +138,7 @@ macro_rules! setup_gf {
 
                 fn mul(self, other: Self) -> Self {
                     let c = $type::clmul(self.value, other.value);
-                    
+
                     type Ctype = <$type as CarryLessMultiply>::OutType;
 
                     let (_, r) = Ctype::gf2_poly_div(c, POLY as Ctype);
@@ -175,7 +175,6 @@ setup_gf! {
     u64,
 }
 
-
 #[repr(transparent)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct GFu128<const POLY: u128> {
@@ -188,8 +187,8 @@ impl<const POLY: u128> GaloisField for GFu128<POLY> {
     const M: u128 = crate::calc_degree(POLY) as u128;
     const NUM_ELEM: u128 = 1 << Self::M;
 
-    const ZERO: Self = Self {value: 0};
-    const ONE: Self = Self {value: 1};
+    const ZERO: Self = Self { value: 0 };
+    const ONE: Self = Self { value: 1 };
 
     fn inverse(&self) -> Self {
         if *self == Self::ZERO {
@@ -222,12 +221,12 @@ impl<const POLY: u128> GaloisField for GFu128<POLY> {
         }
 
         Self {
-            value: t as Self::StorageType
+            value: t as Self::StorageType,
         }
     }
 
     fn new(value: u128) -> Self {
-        Self {value: value}
+        Self { value: value }
     }
 
     fn validate(&self) -> bool {
@@ -288,14 +287,18 @@ impl<const POLY: u128> Mul<GFu128<POLY>> for GFu128<POLY> {
 
     fn mul(self, other: Self) -> Self {
         let c = u128::clmul(self.value, other.value);
-        
+
         type Ctype = <u128 as CarryLessMultiply>::OutType;
 
-        let (_, r) = Ctype::gf2_poly_div(c, U256{lower: POLY, upper: 0});
+        let (_, r) = Ctype::gf2_poly_div(
+            c,
+            U256 {
+                lower: POLY,
+                upper: 0,
+            },
+        );
 
-        Self {
-            value: r.lower,
-        }
+        Self { value: r.lower }
     }
 }
 

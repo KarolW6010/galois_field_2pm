@@ -125,29 +125,13 @@ macro_rules! setup_gf {
 
             impl<const POLY: u128> fmt::Debug for [<GF $type>]<POLY> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    if Self::M <= 4 {
-                        return write!(f, "GF<{:#0X}>(value: 0x{:01X})", POLY, self.value);
-                    } else if Self::M <= 8 {
-                        return write!(f, "GF<{:#0X}>(value: 0x{:02X})", POLY, self.value);
-                    } else if Self::M <= 12 {
-                        return write!(f, "GF<{:#0X}>(value: 0x{:03X})", POLY, self.value);
-                    } else {
-                        return write!(f, "GF<{:#0X}>(value: 0x{:04X})", POLY, self.value);
-                    }
+                    write!(f, "GF<{:#0X}>(value: 0x{:0width$x})", POLY, self.value, width = (Self::M as usize / 4))
                 }
             }
-
+            
             impl<const POLY: u128> fmt::Display for [<GF $type>]<POLY> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    if Self::M <= 4 {
-                        return write!(f, "0x{:01X}", self.value);
-                    } else if Self::M <= 8 {
-                        return write!(f, "0x{:02X}", self.value);
-                    } else if Self::M <= 12 {
-                        return write!(f, "0x{:03X}", self.value);
-                    } else {
-                        return write!(f, "0x{:04X}", self.value);
-                    }
+                    write!(f, "0x{:0width$X}", self.value, width = (Self::M as usize / 4))
                 }
             }
 

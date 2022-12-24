@@ -25,11 +25,11 @@
 //! use galois_field_2pm::{GaloisField, gf2_lut};
 //!
 //! // First lets define out Galois Field
-//! // For irreducible polynomial p(x) = x^3 + x + 1 the u128 representation is given by 0xB.
+//! // For the irreducible polynomial p(x) = x^3 + x + 1 the u128 representation is given by 0xB.
 //! // Note that this p(x) is primitive so we can use either gf2_lut of gf2
 //! // Note that GFu8 can represent the field generate by 0xB as the degree of 0xB is 3 and 3 ≤ 8.
 //! //     For p(x) = 0x211 (degree 9), GFu8 can not be used. GFu16 must be used instead
-//! type GF = gf2_lut::GFu8::<0xB>;
+//! type GF = gf2_lut::GFu8::<0xB>; // Or alternatively type GF = gf2::GFu8::<0xB>;
 //! let a = GF::ONE;
 //! let b = GF::new(2);
 //! let c = GF {value: 3};

@@ -3,8 +3,11 @@ use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use paste::paste;
 
 mod clmul;
+mod gf2_poly_div;
+
 use crate::GaloisField;
-use clmul::{CarryLessMultiply, GF2PolyDiv, U256};
+use clmul::CarryLessMultiply;
+use gf2_poly_div::GF2PolyDiv;
 
 macro_rules! assign_operator_impl {
     ($($type:ty: $trait_name:ident: $trait_fn:ident: $op:tt,)*) => {
@@ -45,34 +48,39 @@ macro_rules! setup_gf {
                     if *self == Self::ZERO {
                         panic!("Cannot take inverse of zero");
                     }
+                    if *self == Self::ONE {
+                        return Self::ONE;
+                    }
 
-                    let mut temp_t: u128;
-                    let mut t: u128 = 0;
-                    let mut new_t: u128 = 1;
+                    let mut temp_t: Self::StorageType;
+                    let mut t: Self::StorageType = 0;
+                    let mut new_t: Self::StorageType = 1;
 
-                    let mut temp_r: u128;
-                    let mut r: u128 = POLY;
-                    let mut new_r: u128 = self.value as u128;
-
-                    let mut quotient: u128;
                     let mut quo = Self::ZERO;
                     let mut nt = Self::ZERO;
 
-                    while new_r != 0 {
-                        temp_r = r;
-                        r = new_r;
-                        (quotient, new_r) = u128::gf2_poly_div(temp_r, new_r);
+                    let mut new_remainder: Self::StorageType;
+                    let mut remainder = self.value;
+                    (quo.value, new_remainder) = $type::gf2_poly_div_poly(POLY, self.value);
 
-                        quo.value = quotient as Self::StorageType;
-                        nt.value = new_t as Self::StorageType;
+                    nt.value = new_t;
+                    temp_t = t;
+                    t = new_t;
+                    new_t = temp_t ^ ((quo * nt).value);
 
+                    while new_remainder != 0 {
+                        let temp_r = remainder;
+                        remainder = new_remainder;
+                        (quo.value, new_remainder) = $type::gf2_poly_div(temp_r, new_remainder);
+
+                        nt.value = new_t;
                         temp_t = t;
                         t = new_t;
-                        new_t = temp_t ^ ((quo * nt).value as u128);
+                        new_t = temp_t ^ ((quo * nt).value);
                     }
 
                     Self {
-                        value: t as Self::StorageType
+                        value: t
                     }
                 }
 
@@ -121,14 +129,11 @@ macro_rules! setup_gf {
                 type Output = Self;
 
                 fn mul(self, other: Self) -> Self {
-                    let c = $type::clmul(self.value, other.value);
-
-                    type Ctype = <$type as CarryLessMultiply>::OutType;
-
-                    let (_, r) = Ctype::gf2_poly_div(c, POLY as Ctype);
+                    let hi = self.value.clmul_high(other.value);
+                    let lo = self.value.clmul_low(other.value);
 
                     Self {
-                        value: r as $type,
+                        value: $type::gf2_poly_mod(hi, lo, POLY),
                     }
                 }
             }
@@ -157,130 +162,5 @@ setup_gf! {
     u16,
     u32,
     u64,
-}
-
-#[repr(transparent)]
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub struct GFu128<const POLY: u128> {
-    pub value: u128,
-}
-
-impl<const POLY: u128> GaloisField for GFu128<POLY> {
-    type StorageType = u128;
-
-    const M: u128 = crate::calc_degree(POLY) as u128;
-    const NUM_ELEM: u128 = 1 << Self::M;
-
-    const ZERO: Self = Self { value: 0 };
-    const ONE: Self = Self { value: 1 };
-
-    fn inverse(&self) -> Self {
-        if *self == Self::ZERO {
-            panic!("Cannot take inverse of zero");
-        }
-
-        let mut temp_t: u128;
-        let mut t: u128 = 0;
-        let mut new_t: u128 = 1;
-
-        let mut temp_r: u128;
-        let mut r: u128 = POLY;
-        let mut new_r: u128 = self.value as u128;
-
-        let mut quotient: u128;
-        let mut quo = Self::ZERO;
-        let mut nt = Self::ZERO;
-
-        while new_r != 0 {
-            temp_r = r;
-            r = new_r;
-            (quotient, new_r) = u128::gf2_poly_div(temp_r, new_r);
-
-            quo.value = quotient as Self::StorageType;
-            nt.value = new_t as Self::StorageType;
-
-            temp_t = t;
-            t = new_t;
-            new_t = temp_t ^ ((quo * nt).value as u128);
-        }
-
-        Self {
-            value: t as Self::StorageType,
-        }
-    }
-
-    fn new(value: u128) -> Self {
-        Self { value: value }
-    }
-
-    fn validate(&self) -> bool {
-        (self.value as u128) >= Self::NUM_ELEM
-    }
-}
-
-impl<const POLY: u128> fmt::Debug for GFu128<POLY> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "GF<{:#0X}>(value: 0x{:0width$x})", POLY, self.value, width = (Self::M as usize / 4))
-    }
-}
-
-impl<const POLY: u128> fmt::Display for GFu128<POLY> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "0x{:0width$X}", self.value, width = (Self::M as usize / 4))
-    }
-}
-
-impl<const POLY: u128> Add<GFu128<POLY>> for GFu128<POLY> {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        Self {
-            value: self.value ^ other.value,
-        }
-    }
-}
-
-impl<const POLY: u128> Sub<GFu128<POLY>> for GFu128<POLY> {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self {
-        Self {
-            value: self.value ^ other.value,
-        }
-    }
-}
-
-impl<const POLY: u128> Mul<GFu128<POLY>> for GFu128<POLY> {
-    type Output = Self;
-
-    fn mul(self, other: Self) -> Self {
-        let c = u128::clmul(self.value, other.value);
-
-        type Ctype = <u128 as CarryLessMultiply>::OutType;
-
-        let (_, r) = Ctype::gf2_poly_div(
-            c,
-            U256 {
-                lower: POLY,
-                upper: 0,
-            },
-        );
-
-        Self { value: r.lower }
-    }
-}
-
-impl<const POLY: u128> Div<GFu128<POLY>> for GFu128<POLY> {
-    type Output = Self;
-
-    fn div(self, other: Self) -> Self {
-        self * other.inverse()
-    }
-}
-
-assign_operator_impl! {
-    u128: AddAssign: add_assign: +,
-    u128: SubAssign: sub_assign: -,
-    u128: MulAssign: mul_assign: *,
-    u128: DivAssign: div_assign: /,
+    u128,
 }

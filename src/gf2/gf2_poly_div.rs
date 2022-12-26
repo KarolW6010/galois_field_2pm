@@ -80,7 +80,7 @@ macro_rules! gf2_poly_div_impl {
                 let deg_divisor: usize = crate::calc_degree(poly) as usize;
                 let d = deg_divisor - 1;
                 let mask: Self::Elem = (poly & !(1u128 << deg_divisor)) as Self::Elem;
-                
+
                 let mut remainder: Self::Elem = 0;
 
                 let hi_deg = crate::calc_degree(hi as u128);

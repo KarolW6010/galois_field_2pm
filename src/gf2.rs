@@ -98,7 +98,7 @@ macro_rules! setup_gf {
                     write!(f, "GF<{:#0X}>(value: 0x{:0width$x})", POLY, self.value, width = (Self::M as usize / 4))
                 }
             }
-            
+
             impl<const POLY: u128> fmt::Display for [<GF $type>]<POLY> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     write!(f, "0x{:0width$X}", self.value, width = (Self::M as usize / 4))

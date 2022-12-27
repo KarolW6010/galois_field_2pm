@@ -356,6 +356,8 @@ mod tests {
         gf2_lut: u16: 0x805,
         gf2_lut: u16: 0x1053,
 
+        gf2: u8: 0x11b,
+        gf2: u8: 0x1dd,
         gf2: u16: 0x211,
         gf2: u16: 0x409,
         gf2: u16: 0x805,

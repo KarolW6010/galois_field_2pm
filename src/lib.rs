@@ -12,7 +12,7 @@
 //!
 //! Next we need to choose how the field is implemented:
 //!
-//!   - If p(x) is primitive and M <= 16 then the look up table implementation can be used (module gf2_lut)
+//!   - If p(x) is primitive and M ≤ 16 then the look up table implementation can be used (module gf2_lut)
 //!
 //!   - Else use the computation based implementation (module gf2)
 //!
@@ -362,7 +362,7 @@ mod tests {
         gf2: u16: 0x409,
         gf2: u16: 0x805,
         gf2: u16: 0x1053,
-        gf2: u32: 0x20009,
+        gf2: u32: 0x2_0009,
         gf2: u64: 0x2_0000_2001,
         gf2: u128: 0x2_0000_0000_0004_0001,
         gf2: u128: 0x8000_0000_0000_0000_0000_0000_0000_0003,

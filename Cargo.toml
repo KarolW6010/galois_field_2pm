@@ -1,6 +1,13 @@
 [package]
 name = "galois_field_2pm"
 version = "0.1.0"
+authors = ["Karol Wadolowski"]
+license = "MIT or Apache-2.0"
+description = "Galois Field (2^M) arithmetic"
+repository = "https://github.com/KarolW6010/galois_field_2pm"
+categories = ["math", "science"]
+keywords = ["galois", "field"]
+readme = "README.md"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
